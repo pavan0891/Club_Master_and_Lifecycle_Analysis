@@ -1,0 +1,280 @@
+These are the DAX formulas and also formulas included for excel file used to analyse and build Club report:
+---------------------------------------------------------------------------------------------------------------------------
+1. Data Preparation (must-do before dashboard)
+A. Convert date columns to Date type
+
+Columns to convert:
+
+ClubStartDt
+
+ClubOpenedDt
+
+Presale_Date
+
+Date_Opened
+
+Excel
+
+=DATEVALUE(A2)
+
+Power BI (DAX – calculated column)
+
+ClubOpenedDate = DATEVALUE('Clubs'[ClubOpenedDt])
+B. Handle missing values
+
+CIP_G_L → treat as 0 or blank (depending on business meaning)
+
+Date_Closed → all NULL → assume active clubs
+
+2. Core KPI Calculations (Top Tiles)
+1️⃣ Total Clubs
+
+Excel
+
+=COUNTA(A:A)
+
+DAX
+
+Total Clubs = COUNT('Clubs'[Club_Key])
+2️⃣ Active Clubs
+
+(All clubs since Date_Closed is empty)
+
+Active Clubs =
+CALCULATE(
+    COUNT('Clubs'[Club_Key]),
+    ISBLANK('Clubs'[Date_Closed])
+)
+3️⃣ Clubs by State
+Clubs by State =
+COUNT('Clubs'[Club_Key])
+
+(use state as dimension)
+
+4️⃣ Clubs by District
+Clubs by District =
+COUNT('Clubs'[Club_Key])
+5️⃣ Clubs by Box Type (Big Box / Small Box)
+Clubs by Box =
+COUNT('Clubs'[Club_Key])
+3. Space & Size Metrics
+6️⃣ Total Square Footage
+Total Sq Ft = SUM('Clubs'[Sq_Ft])
+7️⃣ Average Club Size
+Avg Sq Ft = AVERAGE('Clubs'[Sq_Ft])
+8️⃣ Avg Sq Ft by Box Type
+
+(use Box in rows)
+
+Avg Sq Ft by Box = AVERAGE('Clubs'[Sq_Ft])
+4. Time-Based & Growth Metrics (Very Important for Dashboards)
+9️⃣ Clubs Opened by Year
+
+(use Year_Opened)
+
+Clubs Opened = COUNT('Clubs'[Club_Key])
+
+Visual: Column / Line chart
+
+🔟 Club Age (Years Since Opened)
+
+Calculated Column
+
+Club Age (Years) =
+DATEDIFF('Clubs'[Date_Opened], TODAY(), YEAR)
+1️⃣1️⃣ Average Club Age
+Avg Club Age = AVERAGE('Clubs'[Club Age (Years)])
+1️⃣2️⃣ Time Taken to Open (Start → Open)
+
+Calculated Column
+
+Days to Open =
+DATEDIFF('Clubs'[ClubStartDt], 'Clubs'[ClubOpenedDt], DAY)
+1️⃣3️⃣ Average Days to Open
+Avg Days to Open =
+AVERAGE('Clubs'[Days to Open])
+5. Presale Performance Metrics
+1️⃣4️⃣ Presale Clubs Count
+Presale Clubs =
+CALCULATE(
+    COUNT('Clubs'[Club_Key]),
+    NOT ISBLANK('Clubs'[Presale_Date])
+)
+1️⃣5️⃣ Presale to Opening Duration
+
+Calculated Column
+
+Presale to Open (Days) =
+DATEDIFF('Clubs'[Presale_Date], 'Clubs'[Date_Opened], DAY)
+6. Financial / CIP Metrics
+1️⃣6️⃣ Total CIP_G_L
+Total CIP = SUM('Clubs'[CIP_G_L])
+1️⃣7️⃣ Average CIP per Club
+Avg CIP = AVERAGE('Clubs'[CIP_G_L])
+7. Recommended Interactive Dashboard Layout
+🎯 KPI Cards
+
+Total Clubs
+
+Active Clubs
+
+Avg Club Size (Sq Ft)
+
+Avg Club Age
+
+Avg Days to Open
+
+📊 Charts
+
+Clubs Opened by Year → Line Chart
+
+Clubs by State → Map / Bar
+
+Clubs by District → Bar
+
+Big Box vs Small Box → Donut
+
+Avg Sq Ft by Box Type → Bar
+
+🎛 Filters / Slicers
+
+State
+
+District
+
+Year Opened
+
+Box Type
+
+--------------------------------------------------------------------------------------------------------------------------
+
+1️⃣ Total Checkins
+🔍 Logic
+
+Sum of all check-ins across all members and clubs.
+
+✅ Case A: If Checkins column exists (numeric)
+Excel
+=SUM(Table1[Checkins])
+Power BI (DAX Measure)
+Total Checkins =
+SUM('Checkins'[Checkins])
+✅ Case B: If each row = 1 check-in (no Checkins column)
+Excel
+=COUNTA(Table1[Member_ID])
+Power BI (DAX)
+Total Checkins =
+COUNTROWS('Checkins')
+2️⃣ Avg Checkins by Member
+🔍 Logic (Step-by-step)
+
+Calculate total check-ins
+
+Calculate distinct members
+
+Divide total check-ins ÷ total members
+
+✅ Excel
+Step 1: Total Checkins
+=SUM(Table1[Checkins])
+Step 2: Distinct Members
+=COUNTA(UNIQUE(Table1[Member_ID]))
+Step 3: Average Checkins per Member
+=SUM(Table1[Checkins]) / COUNTA(UNIQUE(Table1[Member_ID]))
+✅ Power BI (DAX)
+Step 1: Total Checkins
+Total Checkins = SUM('Checkins'[Checkins])
+Step 2: Total Members
+Total Members =
+DISTINCTCOUNT('Checkins'[Member_ID])
+Step 3: Avg Checkins by Member
+Avg Checkins by Member =
+DIVIDE([Total Checkins], [Total Members])
+3️⃣ Checkins by Club
+🔍 Logic
+
+Total check-ins grouped by each club.
+
+✅ Excel (Pivot Table – Recommended)
+
+Insert Pivot Table
+
+Rows → Club_Name
+
+Values → SUM of Checkins
+
+OR Formula Version
+=SUMIFS(Table1[Checkins], Table1[Club_Name], A2)
+
+(A2 = club name)
+
+✅ Power BI (DAX)
+Checkins by Club =
+SUM('Checkins'[Checkins])
+
+📊 Use Club_Name on axis → works dynamically.
+
+4️⃣ Avg Checkins by Club
+🔍 Logic (Very Important)
+
+Calculate check-ins per club
+
+Calculate number of clubs
+
+Divide total check-ins ÷ total clubs
+
+✅ Excel
+Step 1: Total Checkins
+=SUM(Table1[Checkins])
+Step 2: Distinct Clubs
+=COUNTA(UNIQUE(Table1[Club_Name]))
+Step 3: Avg Checkins per Club
+=SUM(Table1[Checkins]) / COUNTA(UNIQUE(Table1[Club_Name]))
+✅ Power BI (DAX)
+Step 1: Total Clubs
+Total Clubs =
+DISTINCTCOUNT('Checkins'[Club_Name])
+Step 2: Avg Checkins by Club
+Avg Checkins by Club =
+DIVIDE([Total Checkins], [Total Clubs])
+✅ Final KPI Summary (Dashboard Ready)
+KPI	Excel Formula	Power BI Measure
+Total Checkins	SUM(Checkins)	SUM(Checkins)
+Avg Checkins by Member	Total / Distinct Members	DIVIDE(Total, Members)
+Checkins by Club	SUMIFS / Pivot	SUM(Checkins)
+Avg Checkins by Club	Total / Distinct Clubs	DIVIDE(Total, Clubs)
+
+Formula for Avg Days to Open :
+Avg Days to Open =
+AVERAGEX(
+    FILTER(
+        Clubs,
+        Clubs[Date_Opened] >= Clubs[Club_Start_Date]
+    ),
+    DATEDIFF(
+        Clubs[Club_Start_Date],
+        Clubs[Date_Opened],
+        DAY
+    )
+)
+
+Open Date Valid =
+IF(
+    Clubs[Date_Opened] >= Clubs[Club_Start_Date],
+    "Valid",
+    "Invalid"
+)
+
+DAX formula for club Status :
+Club Status =
+IF(
+    ISBLANK(Clubs[Date_Closed]) || Clubs[Date_Closed] = "",
+    "Active",
+    "Closed"
+)
+
+Active Clubs =
+CALCULATE(
+    DISTINCTCOUNT(Clubs[Club_Key]),
+    Clubs[Club Status] = "Active"
+)

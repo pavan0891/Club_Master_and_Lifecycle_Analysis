@@ -1,0 +1,893 @@
+Overview for Insight and Visual creation steps :
+---------------------------------------------------------------------------------------------------------------------------
+
+1️⃣ Understand the Data Model (from your file)
+Sheets in your file
+
+Club Table → Club master data
+
+Members → Member details (join date, status, club)
+
+Checkins → Member visit records (no explicit “count” column)
+
+POS Transactions → Revenue transactions
+
+Profit Centers → Mapping for POS
+
+Metrics → Business questions / KPIs (THIS drives visuals)
+
+2️⃣ Metrics Sheet → What needs to be built
+
+From the Metrics sheet, KPIs are grouped into:
+
+🔹 Checkins
+
+Total Checkins
+
+Avg Checkins by Member
+
+Checkins by Club
+
+Avg Checkins by Club
+
+🔹 Members
+
+Current Active Members
+
+New Members
+
+Cancelled Members
+
+🔹 POS Transactions
+
+Total Revenue
+
+Revenue by Club
+
+3️⃣ Data Relationships (Excel & Power BI)
+Required Relationships
+From Table	Column	To Table	Column
+Members	Member_ID	Checkins	Member_ID
+Members	Club_ID	Club Table	Club_ID
+POS Transactions	Club_ID	Club Table	Club_ID
+POS Transactions	Profit_Center_ID	Profit Centers	Profit_Center_ID
+
+📌 This is mandatory in Power BI
+📌 In Excel, you’ll simulate this via Pivot Tables / XLOOKUP
+
+4️⃣ Excel Calculations (Step-by-Step)
+🔹 CHECKINS METRICS (Excel)
+✅ Total Checkins
+
+Logic:
+Each row in Checkins = 1 check-in
+
+Excel Formula
+
+=COUNTA(Checkins!A:A)
+
+(or use a Pivot Table → Count of Member_ID)
+
+✅ Avg Checkins by Member
+
+Logic:
+Total Checkins ÷ Distinct Members who checked in
+
+Formula
+
+= Total_Checkins / COUNTA(UNIQUE(Checkins!Member_ID))
+✅ Checkins by Club
+
+Logic:
+Count checkins grouped by club
+
+Steps
+
+Add Club_ID to Checkins using XLOOKUP from Members
+
+Create Pivot Table:
+
+Rows → Club Name
+
+Values → Count of Member_ID
+
+✅ Avg Checkins by Club
+
+Logic:
+Checkins per club ÷ Members in that club
+
+Formula
+
+= Checkins_per_Club / Total_Members_in_Club
+🔹 MEMBERS METRICS (Excel)
+✅ Current Active Members
+
+Logic:
+Members where Status = "Active"
+
+Formula
+
+=COUNTIF(Members!Status, "Active")
+✅ New Members
+
+Logic:
+Members joined in selected period (month/year)
+
+Example (current month)
+
+=COUNTIFS(Members!StartDate,">="&EOMONTH(TODAY(),-1)+1,
+          Members!StartDate,"<="&EOMONTH(TODAY(),0))
+✅ Cancelled Members
+=COUNTIF(Members!Status,"Cancelled")
+🔹 POS METRICS (Excel)
+✅ Total Revenue
+=SUM('POS Transactions'!Amount)
+✅ Revenue by Club
+
+Steps
+
+Pivot Table
+
+Rows → Club Name
+
+Values → Sum of Amount
+
+5️⃣ Power BI – Step-by-Step Build
+🔹 Step 1: Load Data
+
+Open Power BI Desktop
+
+Get Data → Excel → Load all sheets
+
+🔹 Step 2: Create Relationships
+
+Go to Model View and create relationships as described above.
+
+🔹 Step 3: DAX Calculations (VERY IMPORTANT)
+🟢 Checkins Measures
+Total Checkins =
+COUNTROWS(Checkins)
+Distinct Members Checked In =
+DISTINCTCOUNT(Checkins[Member_ID])
+Avg Checkins by Member =
+DIVIDE([Total Checkins], [Distinct Members Checked In])
+Checkins by Club =
+COUNT(Checkins[Member_ID])
+Avg Checkins by Club =
+DIVIDE([Total Checkins], DISTINCTCOUNT(Members[Member_ID]))
+🟢 Members Measures
+Active Members =
+CALCULATE(
+    COUNT(Members[Member_ID]),
+    Members[Status] = "Active"
+)
+Cancelled Members =
+CALCULATE(
+    COUNT(Members[Member_ID]),
+    Members[Status] = "Cancelled"
+)
+New Members =
+CALCULATE(
+    COUNT(Members[Member_ID]),
+    FILTER(
+        Members,
+        Members[StartDate] >= MIN('Date'[Date]) &&
+        Members[StartDate] <= MAX('Date'[Date])
+    )
+)
+🟢 POS Measures
+Total Revenue =
+SUM('POS Transactions'[Amount])
+Revenue by Club =
+SUM('POS Transactions'[Amount])
+6️⃣ Recommended Data Visuals (From Metrics Sheet)
+Metric	Visual
+Total Checkins	Card
+Avg Checkins by Member	Card
+Checkins by Club	Clustered Column Chart
+Avg Checkins by Club	Bar Chart
+Active Members	Card
+New Members	Line Chart (by month)
+Cancelled Members	Card
+Total Revenue	Card
+Revenue by Club	Column / Tree Map
+7️⃣ Final Dashboard Layout (Best Practice)
+🔹 Top KPIs (Cards)
+
+Total Checkins
+
+Active Members
+
+Total Revenue
+
+🔹 Middle Section
+
+Checkins by Club
+
+Revenue by Club
+
+🔹 Bottom Section
+
+New vs Cancelled Members trend
+
+Avg Checkins per Member
+
+---------------------------------------------------------------------------------------------------------------------------
+1️⃣ Metrics Sheet → Fact, Dimension & Hybrid Classification
+
+Based on the Metrics sheet KPIs, your data model should look like this:
+
+🔷 FACT TABLES (Transactional / Measurable)
+
+These answer “how much / how many / when”
+
+✅ Fact_Checkins
+
+Source: Checkins sheet
+Grain: One row per member check-in
+
+Column	Description
+Checkin_ID (if exists)	Unique checkin
+Member_ID	Who checked in
+Checkin_Date	When
+Club_ID	Where
+
+Metrics Derived
+
+Total Checkins
+
+Avg Checkins per Member
+
+Checkins by Club
+
+✅ Fact_POS_Transactions
+
+Source: POS Transactions sheet
+Grain: One row per transaction
+
+Column	Description
+Transaction_ID	
+Club_ID	
+Profit_Center_ID	
+Transaction_Date	
+Amount	
+
+Metrics Derived
+
+Total Revenue
+
+Revenue by Club
+
+🔷 DIMENSION TABLES (Descriptive)
+
+These answer “who / what / where”
+
+✅ Dim_Members
+
+Source: Members sheet
+
+Column
+Member_ID
+Member_Name
+Gender
+StartDate
+Status
+Club_ID
+✅ Dim_Club
+
+Source: Club Table
+
+Column
+Club_ID
+Club_Name
+Location
+✅ Dim_Profit_Center
+
+Source: Profit Centers
+
+Column
+Profit_Center_ID
+Profit_Center_Name
+✅ Dim_Date (must be created)
+
+Used for:
+
+New Members
+
+Trends
+
+Monthly visuals
+
+🔷 HYBRID TABLE (Fact + Dimension behavior)
+⚠️ Hybrid: Members Table
+
+The Members table behaves as:
+
+Dimension → member attributes
+
+Fact-like → counts for:
+
+Active Members
+
+Cancelled Members
+
+New Members
+
+📌 This is explicitly implied by the Metrics sheet
+
+2️⃣ STAR SCHEMA (Target Model)
+            Dim_Date
+                |
+Dim_Club — Fact_Checkins — Dim_Members
+                |
+        Fact_POS_Transactions
+                |
+        Dim_Profit_Center
+
+3️⃣ STEP-BY-STEP: EXCEL IMPLEMENTATION
+🔹 STEP 1: Prepare Fact Tables
+Fact_Checkins (Excel)
+
+Each row = 1 check-in
+
+Add:
+
+Club_ID = XLOOKUP(Member_ID, Members!Member_ID, Members!Club_ID)
+Fact_POS_Transactions
+
+Already transactional → no change
+
+🔹 STEP 2: Dimension Tables
+
+Use unique lists:
+
+Club Table
+
+Members
+
+Profit Centers
+
+Date table (manually or formula)
+
+🔹 STEP 3: Excel Calculations (By Fact / Dimension)
+🟢 FACT: CHECKINS
+Total Checkins
+=COUNTA(Fact_Checkins!Member_ID)
+Avg Checkins per Member
+=COUNTA(Fact_Checkins!Member_ID) /
+ COUNTA(UNIQUE(Fact_Checkins!Member_ID))
+Checkins by Club
+
+Pivot Table:
+
+Rows → Club_Name
+
+Values → Count of Member_ID
+
+🟢 FACT: POS TRANSACTIONS
+Total Revenue
+=SUM(Fact_POS_Transactions!Amount)
+Revenue by Club
+
+Pivot:
+
+Rows → Club_Name
+
+Values → Sum of Amount
+
+🟢 HYBRID: MEMBERS
+Active Members
+=COUNTIF(Members!Status,"Active")
+Cancelled Members
+=COUNTIF(Members!Status,"Cancelled")
+New Members (Monthly)
+=COUNTIFS(
+ Members!StartDate,">="&StartDate,
+ Members!StartDate,"<="&EndDate
+)
+4️⃣ STEP-BY-STEP: POWER BI IMPLEMENTATION
+🔹 STEP 1: Load Tables
+
+Load:
+
+Checkins
+
+POS Transactions
+
+Members
+
+Club Table
+
+Profit Centers
+
+🔹 STEP 2: Create Date Table (MANDATORY)
+Dim_Date =
+ADDCOLUMNS(
+    CALENDAR (DATE(2018,1,1), DATE(2026,12,31)),
+    "Year", YEAR([Date]),
+    "Month", FORMAT([Date],"MMM"),
+    "MonthYear", FORMAT([Date],"MMM YYYY")
+)
+🔹 STEP 3: Create Relationships
+From	To
+Checkins[Member_ID] → Members[Member_ID]	
+Members[Club_ID] → Club[Club_ID]	
+POS[Club_ID] → Club[Club_ID]	
+POS[Profit_Center_ID] → Profit_Center	
+Date[Date] → Checkins[Checkin_Date]	
+Date[Date] → Members[StartDate]	
+Date[Date] → POS[Transaction_Date]	
+5️⃣ POWER BI – DAX CALCULATIONS (By Table Type)
+🟢 FACT: CHECKINS
+Total Checkins =
+COUNTROWS(Checkins)
+Distinct Members Checked In =
+DISTINCTCOUNT(Checkins[Member_ID])
+Avg Checkins per Member =
+DIVIDE([Total Checkins],[Distinct Members Checked In])
+Checkins by Club =
+COUNT(Checkins[Member_ID])
+🟢 FACT: POS TRANSACTIONS
+Total Revenue =
+SUM('POS Transactions'[Amount])
+Revenue by Club =
+SUM('POS Transactions'[Amount])
+🟢 HYBRID: MEMBERS
+Active Members =
+CALCULATE(
+    COUNT(Members[Member_ID]),
+    Members[Status] = "Active"
+)
+Cancelled Members =
+CALCULATE(
+    COUNT(Members[Member_ID]),
+    Members[Status] = "Cancelled"
+)
+New Members =
+CALCULATE(
+    COUNT(Members[Member_ID]),
+    USERELATIONSHIP(Members[StartDate], Dim_Date[Date])
+)
+6️⃣ Visual Mapping (Metrics Sheet → BI Visuals)
+Metric	Table Type	Visual
+Total Checkins	Fact	Card
+Avg Checkins	Fact	Card
+Checkins by Club	Fact + Dim	Column
+Active Members	Hybrid	Card
+New Members	Hybrid + Date	Line
+Cancelled Members	Hybrid	Card
+Total Revenue	Fact	Card
+Revenue by Club	Fact + Dim	Bar
+---------------------------------------------------------------------------------------------------------------------------
+
+DAX formula to create a calculated column for Transaction_ID:
+
+Transaction_ID =
+RANKX(
+    ALL('POS Transactions'),
+    'POS Transactions'[Transaction_Date] & 
+    'POS Transactions'[Club_ID] & 
+    'POS Transactions'[Amount],
+    ,
+    ASC,
+    DENSE
+)
+
+Excel Method :
+
+Add a column:
+
+Transaction_ID = ROW() - 1
+
+DAX Formula for Total Revenue & Transactions :
+Total Revenue = SUM(subtotal)
+Total Transactions = COUNTROWS('POS Transactions')
+
+---------------------------------------------------------------------------------------------------------------------------
+
+1️⃣ DATA MODEL (Must be correct first)
+Tables
+
+Fact tables
+
+Checkins
+
+POS Transactions
+
+Dimension tables
+
+Members
+
+Club
+
+Dim_Date (created earlier)
+
+Relationships
+Checkins[Member_ID] → Members[Member_ID]
+POS[Member_ID]      → Members[Member_ID]
+Members[Club_ID]    → Club[Club_ID]
+
+Checkins[Date]      → Dim_Date[Date]  (Active)
+POS[Date]           → Dim_Date[Date]  (Active)
+Members[StartDate]  → Dim_Date[Date]  (Inactive)
+2️⃣ REQUIRED MEASURES (Create once)
+Activity
+Total Checkins =
+COUNTROWS(Checkins)
+
+Distinct Members =
+DISTINCTCOUNT(Members[Member_ID])
+
+Avg Checkins per Member =
+DIVIDE([Total Checkins], [Distinct Members])
+Membership
+New Members =
+CALCULATE(
+    COUNT(Members[Member_ID]),
+    USERELATIONSHIP(Members[StartDate], Dim_Date[Date])
+)
+
+Active Members =
+CALCULATE(
+    DISTINCTCOUNT(Checkins[Member_ID])
+)
+Revenue
+Total Revenue =
+SUM('POS Transactions'[Subtotal])
+3️⃣ DASHBOARD LAYOUT (Follow This Structure)
+
+Think of the dashboard as 4 rows
+
+🔹 ROW 1 — KPI SUMMARY CARDS
+
+Add Card visuals
+
+KPI	Measure
+Total Revenue	Total Revenue
+Total Checkins	Total Checkins
+Active Members	Active Members
+New Members	New Members
+
+📌 This gives instant business health overview
+
+🔹 ROW 2 — TRENDS (Time Intelligence)
+Visual 1 — Checkins Trend
+
+Line Chart
+
+X-axis → Dim_Date[Month Year]
+
+Values → Total Checkins
+
+Legend → Club Name
+
+Visual 2 — Revenue Trend
+
+Line Chart
+
+X-axis → Month Year
+
+Values → Total Revenue
+
+Legend → Club Name
+
+Visual 3 — New Members Trend
+
+Area Chart
+
+X-axis → Month Year
+
+Values → New Members
+
+🔹 ROW 3 — CLUB PERFORMANCE
+Visual 4 — Avg Checkins by Club
+
+Bar Chart
+
+Axis → Club Name
+
+Values → Avg Checkins per Member
+
+Visual 5 — Revenue by Club
+
+Bar Chart
+
+Axis → Club Name
+
+Values → Total Revenue
+
+Visual 6 — Active Members by Club
+
+Bar Chart
+
+Axis → Club Name
+
+Values → Active Members
+
+🔹 ROW 4 — ENGAGEMENT ANALYSIS
+Visual 7 — Visit Frequency Distribution
+
+Column Chart
+(Create bins from checkins per member)
+
+Visual 8 — Top Members (Optional)
+
+Table:
+
+Member_ID
+
+Club
+
+Total Checkins
+
+Revenue
+
+4️⃣ ADD INTERACTIVITY (Very Important)
+
+Add slicers:
+
+Slicer	Column
+Date	Dim_Date[Date]
+Club	Club[Club_Name]
+Payment Type	POS[PaymentType]
+Weekend/Weekday	Dim_Date[Is Weekend]
+
+Now entire dashboard filters dynamically.
+
+---------------------------------------------------------------------------------------------------------------------------
+
+Excel Formula :
+✅ OPTION 3: Start & End Date via Helper Cells (BEST PRACTICE)
+Helper cells
+B1 = DATE(YEAR(TODAY()),MONTH(TODAY()),1)
+B2 = EOMONTH(B1,0)
+Formula
+=COUNTIFS(
+    Members!StartDate,">="&B1,
+    Members!StartDate,"<="&B2
+)
+
+Relationship Diagram :
+
+                Dim_Date
+                   |
+                   | (Date)
+                   |
+        --------------------------------
+        |                              |
+Fact_POS_Transactions        Fact_Checkins
+        |                              |
+        | (Member_ID)                  | (Member_ID)
+        |                              |
+   Dim_Members                     Dim_Members
+        |
+        | (Club_ID)
+        |
+     Dim_Clubs
+        |
+        | (Profit_Center)
+        |
+ Dim_Profit_Centers
+
+--------------------------------------------------------------------------------------------------------------------------
+Steps followed to build visuals for Member Acquisition and Cancellation Overtime :
+
+1️⃣ Member Status Column (like Python logic)
+Member Status =
+VAR TodayDate = TODAY()
+RETURN
+IF(
+    ISBLANK(Members[StatusDate]),
+    "Active",
+    IF(Members[StatusDate] >= TodayDate, "Pending Cancel", "Expired")
+)
+2️⃣ Join Month & Cancel Month
+Join Month = DATE(YEAR(Members[JoinDate]), MONTH(Members[JoinDate]), 1)
+
+Cancel Month =
+IF(
+    ISBLANK(Members[StatusDate]),
+    BLANK(),
+    DATE(YEAR(Members[StatusDate]), MONTH(Members[StatusDate]), 1)
+)
+🧩 STEP 5 — Create Measures
+Members Joined
+Members Joined = COUNT(Members[MemberKey])
+Members Cancelled
+Members Cancelled =
+CALCULATE(
+    COUNT(Members[MemberKey]),
+    NOT(ISBLANK(Members[StatusDate]))
+)
+Total Visits
+Total Visits = COUNT(Checkins[CheckinID])
+Revenue
+Total Revenue = SUM(Transactions[Amount])
+Visits per Member
+Visits per Member =
+DIVIDE([Total Visits], DISTINCTCOUNT(Members[MemberKey]))
+📊 VISUAL 1 — Member Join vs Cancel Trend
+Create Date Table (Required for continuous axis)
+
+Modeling → New Table
+
+Calendar =
+ADDCOLUMNS(
+    CALENDAR (DATE(2018,1,1), DATE(2025,12,31)),
+    "Year", YEAR([Date]),
+    "Month Number", MONTH([Date]),
+    "Month", FORMAT([Date],"MMM"),
+    "YearMonth", FORMAT([Date],"YYYY-MM")
+)
+Add:
+
+MonthYear = FORMAT(Calendar[Date], "MMM YYYY")
+MonthStart = DATE(YEAR(Calendar[Date]), MONTH(Calendar[Date]), 1)
+
+Create TWO relationships:
+
+From	To	Active?
+Calender[Date]	Members[JoinDate]	✅ Active
+Calender[Date]	Members[CancelDate / StatusDate]	❌ Inactive
+
+(Set second as inactive)
+
+Measures using USERELATIONSHIP
+Joined Members =
+DISTINCTCOUNT(Members[Member_Key])
+
+Cancelled Members =
+CALCULATE(
+    DISTINCTCOUNT(Members[Member_Key]),
+    USERELATIONSHIP(Members[StatusDate], 'Date'[Date])
+)
+Build Chart
+
+Insert → Clustered Column Chart
+
+Fields:
+
+X Axis → Calendar[MonthStart]
+Values → Joined, Cancelled
+
+Axis Type → Continuous
+
+You now reproduced chart 1 🎯
+
+📊 VISUAL 2 — Member Status Distribution (Pie)
+
+Insert → Pie Chart
+
+Fields:
+
+Legend → Member Status
+Values → Count of MemberKey
+
+Format → Show Percentages ON
+
+Matches your Python pie chart ✔
+
+📊 VISUAL 3 — Visits per Member Distribution (Histogram)
+
+Power BI doesn’t auto-histogram → create bins
+
+Go to Checkins table
+
+Right click → MemberKey → New Group
+
+Bin size: 1
+
+Then create measure:
+
+Visit Count = COUNT(Checkins[CheckinID])
+
+Insert → Column chart
+
+X-axis → Visit Count bins
+Y-axis → Count of Members
+
+Now matches your distribution plot ✔
+
+📊 VISUAL 4 — Top 10 Members by Spending
+
+Insert → Bar Chart
+
+Y Axis → MemberKey
+X Axis → Total Revenue
+
+Filters → Top N → 10 → By Total Revenue
+
+Sort descending
+
+---------------------------------------------------------------------------------------------------------------------------
+🎯 Objective
+
+Show how many members fall into visit frequency groups like:
+
+0–5 visits
+
+6–10 visits
+
+11–20 visits
+
+21+ visits
+
+✅ STEP 1: Create Visits Per Member Measure
+
+First, calculate total visits per member.
+
+🔹 If you already have Checkins table:
+
+Go to Model View → Ensure:
+
+Members[MemberKey]  →  Checkins[MemberKey]
+(Relationship: One-to-Many)
+🔹 Create Measure (DAX)
+
+Go to Modeling → New Measure
+
+Visits per Member = 
+CALCULATE(
+    COUNT(Checkins[CheckinDate]),
+    ALLEXCEPT(Members, Members[MemberKey])
+)
+
+This calculates total check-ins for each member.
+
+✅ STEP 2: Create Histogram Bins (Very Important)
+
+Power BI does not automatically create histograms for measures.
+
+So we create bins using a calculated column.
+
+🔹 Option A (Recommended for Interviews) – Create Visit Groups
+
+Go to Modeling → New Column in Members table:
+
+Visit Group = 
+SWITCH(
+    TRUE(),
+    [Visits per Member] = 0, "0 Visits",
+    [Visits per Member] <= 5, "1-5 Visits",
+    [Visits per Member] <= 10, "6-10 Visits",
+    [Visits per Member] <= 20, "11-20 Visits",
+    "21+ Visits"
+)
+✅ STEP 3: Create Histogram Visual
+🎨 Create Visual
+
+Go to Report View
+
+Select Clustered Column Chart
+
+Drag fields:
+
+Field	Put In
+Visit Group	X-Axis
+MemberKey	Values
+
+Change Values aggregation to:
+
+Count (Distinct)
+📊 Final Visual Looks Like This
+Members Count
+   |
+   |                ████
+   |        █████   ██████
+   |  █████ ██████  █████████
+   |________________________________
+     0    1-5    6-10   11-20  21+
+            Visit Groups
+
+👉 X-axis = Visit Frequency Groups
+👉 Y-axis = Number of Members
+
+Create measure:
+
+Average Visits = 
+AVERAGEX(
+    VALUES(Members[MemberKey]),
+    [Visits per Member]
+)
+
+Add as KPI card.

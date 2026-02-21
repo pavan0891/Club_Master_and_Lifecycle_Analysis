@@ -1,0 +1,103 @@
+          📊 Project Title
+
+Club Master & Lifecycle Analysis Dashboard
+
+🧩 Project Overview
+
+This project focuses on analyzing a club master dataset containing lifecycle, geographic, and infrastructure details for multiple clubs. The objective was to design a clean analytical model and build an interactive dashboard that enables business users to monitor club expansion, operational status, and infrastructure distribution across regions.
+
+The dataset represents one row per club and functions as a dimension-style master table, rather than a transactional dataset.
+
+🎯 Business Objectives
+
+Track total, active, and closed clubs
+
+Analyze club distribution by geography (State, District)
+
+Understand club lifecycle timelines (start, presale, opening, closure)
+
+Compare club sizes and formats (Big Box vs Small Box)
+
+Support strategic expansion and operations planning
+
+🗂️ Dataset Description
+
+The dataset includes the following key attributes:
+
+Club identifiers and names
+
+Lifecycle dates (Club Start Date, Presale Date, Date Opened, Date Closed)
+
+Geographic information (State, District)
+
+Physical attributes (Square Footage, Box Type)
+
+Opening year for trend analysis
+
+The grain of the dataset is one record per club, making it suitable as a Club Dimension / Master table in a BI model.
+
+🧠 Data Modeling Approach
+
+Treated the dataset as a Club Dimension table
+
+Clearly distinguished club lifecycle dates from member or transaction data
+
+Designed the model to integrate seamlessly with future Fact tables such as:
+
+POS Transactions
+
+Member Check-ins
+
+Ensured correct grain awareness to avoid invalid KPIs (e.g., member joins)
+
+📐 Key Metrics & KPIs
+
+Total Clubs
+
+Active vs Closed Clubs
+
+Clubs Opened by Year
+
+Clubs by State and District
+
+Average Club Size (Sq Ft)
+
+Club Age (Years Since Opening)
+
+Distribution by Box Type (Big Box / Small Box)
+
+📊 Dashboard Features
+
+KPI cards for high-level metrics
+
+Bar and column charts for geographic and time-based analysis
+
+Donut charts for club format distribution
+
+Slicers for State, District, Box Type, and Year Opened
+
+Fully interactive filtering across all visuals
+
+🛠️ Tools & Technologies Used
+
+Excel – data validation, pivot analysis
+
+Power BI – data modeling, DAX measures, interactive dashboards
+
+SQL – KPI logic and analytical queries
+
+Python – integration-ready query execution and data retrieval
+
+🔍 Key Learnings & Best Practices
+
+Importance of identifying data grain before defining KPIs
+
+Difference between dimension vs fact tables
+
+Proper use of lifecycle dates for time-based analysis
+
+Designing dashboards that balance executive KPIs with operational insights
+
+🎤 Interview-Ready Closing Statement
+
+“This project demonstrates my ability to understand data grain, model dimension tables correctly, and design scalable BI dashboards that can integrate with transactional data in the future.”      
